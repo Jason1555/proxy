@@ -1,91 +1,68 @@
 package cache
 
-import (
-	"container/list"
-	"sync"
-)
+import "sync"
 
-type Cache interface {
-	Get(key string) (any, bool)
+type Storage interface {
 	Set(key string, value any)
+	Get(key string) (any, bool)
 	Delete(key string)
-	Clear()
 	Len() int
+	Clear()
 }
 
-type lruCache struct {
+type EvictionPolicy interface {
+	OnGet(key string)
+	OnSet(key string, value any)
+	OnDelete(key string)
+	GetVictim() string
+}
+
+type Cache struct {
+	mu sync.RWMutex
+	Storage
+	policy  EvictionPolicy
 	maxSize int
-	mu      sync.RWMutex
-	cache   map[string]*list.Element
-	order   *list.List
 }
 
-type cacheEntry struct {
-	key   string
-	value any
-}
-
-func NewLRUCache(maxSize int) Cache {
-	return &lruCache{
+func NewCache(storage Storage, policy EvictionPolicy, maxSize int) *Cache {
+	return &Cache{
+		Storage: storage,
+		policy:  policy,
 		maxSize: maxSize,
-		cache:   make(map[string]*list.Element),
-		order:   list.New(),
 	}
 }
 
-func (l *lruCache) Get(key string) (any, bool) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+func (c *Cache) Set(key string, value any) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	elem, exists := l.cache[key]
-	if !exists {
-		return nil, false
-	}
+	_, exists := c.Storage.Get(key)
 
-	l.order.MoveToFront(elem)
-	return elem.Value.(*cacheEntry).value, true
-}
-
-func (l *lruCache) Set(key string, value any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if elem, exists := l.cache[key]; exists {
-		elem.Value = value
-		l.order.MoveToFront(elem)
-		return
-	}
-
-	elem := l.order.PushFront(&cacheEntry{key, value})
-	l.cache[key] = elem
-
-	if l.order.Len() > l.maxSize {
-		lastElem := l.order.Back()
-		if lastElem != nil {
-			l.order.Remove(lastElem)
-			delete(l.cache, lastElem.Value.(*cacheEntry).key)
+	if !exists && c.Len() >= c.maxSize {
+		if victim := c.policy.GetVictim(); victim != "" {
+			c.Storage.Delete(victim)
+			c.policy.OnDelete(victim)
 		}
 	}
+
+	c.Storage.Set(key, value)
+	c.policy.OnSet(key, value)
 }
 
-func (l *lruCache) Delete(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if elem, exists := l.cache[key]; exists {
-		l.order.Remove(elem)
-		delete(l.cache, key)
+func (c *Cache) Get(key string) (any, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	value, exists := c.Storage.Get(key)
+	if exists {
+		c.policy.OnGet(key)
 	}
+	return value, exists
 }
 
-func (l *lruCache) Clear() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.cache = make(map[string]*list.Element)
-	l.order = list.New()
-}
-
-func (l *lruCache) Len() int {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return len(l.cache)
+func (c *Cache) Delete(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Storage.Delete(key)
+	c.policy.OnDelete(key)
 }
