@@ -1,4 +1,4 @@
-package cache
+package domain
 
 type MapStorage struct {
 	data map[string]any

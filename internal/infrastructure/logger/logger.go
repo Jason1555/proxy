@@ -6,25 +6,15 @@ import (
 )
 
 type Logger interface {
-	Debug(msg string, fields zap.Field)
-	Info(msg string, fields zap.Field)
-	Warn(msg string, fields zap.Field)
-	Error(msg string, fields zap.Field)
-	Fatal(msg string, fields zap.Field)
-
-	AccessDenied(ip, url, reason string)
-	AccessAllowed(ip, url string)
-	RuleAdded(ruleID, ruleType, ip string)
-	RuleDeleted(ruleID string)
-	ConfigReloaded(rulesCount int)
-	CacheHit(ip string)
-	CacheMiss(ip string)
-
-	Sync() error
+	Debugf(msg string, args ...any)
+	Infof(msg string, args ...any)
+	Warnf(msg string, args ...any)
+	Errorf(msg string, args ...any)
+	Fatalf(msg string, args ...any)
 }
 
 type ZapLogger struct {
-	logger *zap.Logger
+	logger *zap.SugaredLogger
 }
 
 func NewZapLogger(config *Config) (*ZapLogger, error) {
@@ -54,84 +44,26 @@ func NewZapLogger(config *Config) (*ZapLogger, error) {
 	}
 
 	return &ZapLogger{
-		logger: zapLogger,
+		logger: zapLogger.Sugar(),
 	}, nil
 }
 
-func (l *ZapLogger) Debug(msg string, fields ...zap.Field) {
-	l.logger.Debug(msg, fields...)
+func (l *ZapLogger) Debugf(msg string, args ...any) {
+	l.logger.Debugf(msg, args...)
 }
 
-func (l *ZapLogger) Info(msg string, fields ...zap.Field) {
-	l.logger.Info(msg, fields...)
+func (l *ZapLogger) Infof(msg string, args ...any) {
+	l.logger.Infof(msg, args...)
 }
 
-func (l *ZapLogger) Warn(msg string, fields ...zap.Field) {
-	l.logger.Warn(msg, fields...)
+func (l *ZapLogger) Warnf(msg string, args ...any) {
+	l.logger.Warnf(msg, args...)
 }
 
-func (l *ZapLogger) Error(msg string, fields ...zap.Field) {
-	l.logger.Error(msg, fields...)
+func (l *ZapLogger) Errorf(msg string, args ...any) {
+	l.logger.Errorf(msg, args...)
 }
 
-func (l *ZapLogger) Fatal(msg string, fields ...zap.Field) {
-	l.logger.Fatal(msg, fields...)
-}
-
-func (l *ZapLogger) AccessDenied(ip, url, reason string) {
-	l.logger.Warn(
-		"access_denied",
-		zap.String("ip", ip),
-		zap.String("url", url),
-		zap.String("reason", reason),
-	)
-}
-
-func (l *ZapLogger) AccessAllowed(ip, url string) {
-	l.logger.Info(
-		"access_allowed",
-		zap.String("ip", ip),
-		zap.String("url", url),
-	)
-}
-
-func (l *ZapLogger) RuleAdded(ruleID, ruleType, ip string) {
-	l.logger.Info(
-		"rule_added",
-		zap.String("rule_id", ruleID),
-		zap.String("type", ruleType),
-		zap.String("ip", ip),
-	)
-}
-
-func (l *ZapLogger) RuleDeleted(ruleID string) {
-	l.logger.Info(
-		"rule_deleted",
-		zap.String("rule_id", ruleID),
-	)
-}
-
-func (l *ZapLogger) ConfigReloaded(rulesCount int) {
-	l.logger.Info(
-		"config_reloaded",
-		zap.Int("rules_count", rulesCount),
-	)
-}
-
-func (l *ZapLogger) CacheHit(ip string) {
-	l.logger.Debug(
-		"cache_hit",
-		zap.String("ip", ip),
-	)
-}
-
-func (l *ZapLogger) CacheMiss(ip string) {
-	l.logger.Debug(
-		"cache_missed",
-		zap.String("ip", ip),
-	)
-}
-
-func (l *ZapLogger) Sync() error {
-	return l.logger.Sync()
+func (l *ZapLogger) Fatalf(msg string, args ...any) {
+	l.logger.Fatalf(msg, args...)
 }
