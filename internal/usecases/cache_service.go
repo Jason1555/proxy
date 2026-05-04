@@ -1,4 +1,4 @@
-package usecase
+package usecases
 
 import (
 	"context"
@@ -8,6 +8,9 @@ import (
 	"proxy/internal/domain"
 	"proxy/internal/infrastructure/logger"
 	"proxy/internal/pkg/cache"
+	"sort"
+	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -38,16 +41,13 @@ func NewCacheService(cache *cache.Cache, config domain.CacheConfig, logger logge
 		cache:  cache,
 		config: config,
 		logger: logger,
-		stats: &cacheStats{
-			hits: 0,
-			misses: 0,
-		},
+		stats: &cacheStats{},
 	}
 }
 
 func (s *cacheService) Get(ctx context.Context, key string) (*domain.CacheEntry, error) {
 	if !s.config.Enabled {
-		s.stats.misses++
+		atomic.AddInt64(&s.stats.misses, 1)
 		return nil, nil
 	}
 
@@ -55,26 +55,26 @@ func (s *cacheService) Get(ctx context.Context, key string) (*domain.CacheEntry,
 
 	value, exists := s.cache.Get(key)
 	if !exists {
-		s.stats.misses++
+		atomic.AddInt64(&s.stats.misses, 1)
 		s.logger.Debugf("Cache miss for key: %s", key)
 		return nil, nil
 	}
 
 	entry, ok := value.(domain.CacheEntry)
 	if !ok {
-		s.stats.misses++
+		atomic.AddInt64(&s.stats.misses, 1)
 		s.logger.Warnf("Cache entry for key %s has invalid type", key)
 		return nil, nil
 	}
 
 	if !entry.ExpiresAt.IsZero() && time.Now().After(entry.ExpiresAt) {
 		s.cache.Delete(key)
-		s.stats.misses++
+		atomic.AddInt64(&s.stats.misses, 1)
 		s.logger.Debugf("Cache entry for key %s has expired", key)
 		return nil, nil
 	}
 
-	s.stats.hits++
+	atomic.AddInt64(&s.stats.hits, 1)
 	latency := time.Since(startTime)
 	s.logger.Debugf("Cache hit for key %s, size: %d bytes, latency: %dms", key, entry.Size, latency.Milliseconds())
 	return &entry, nil
@@ -114,14 +114,6 @@ func (s *cacheService) Invalidate(ctx context.Context, req domain.InvalidationRe
 		s.cache.Delete(req.Value)
 		s.logger.Infof("Cache entry invalidated by key: %s", req.Value)
 
-	case domain.InvalidateByPrefix:
-		//TODO: Implement prefix-based invalidation in the cache layer
-		s.logger.Infof("Cache entries invalidated by prefix: %s", req.Value)
-
-	case domain.InvalidateByTag:
-		//TODO: Implement tag-based invalidation in the cache layer
-		s.logger.Infof("Cache entries invalidated by tag: %s", req.Value)
-
 	case domain.InvalidateAll:
 		s.cache.Clear()
 		s.logger.Infof("All cache entries invalidated")
@@ -134,13 +126,16 @@ func (s *cacheService) Invalidate(ctx context.Context, req domain.InvalidationRe
 }
 
 func (s *cacheService) GetStats(ctx context.Context) domain.CacheStats {
+	hits := atomic.LoadInt64(&s.stats.hits)
+	misses := atomic.LoadInt64(&s.stats.misses)
+
 	return domain.CacheStats{
 		Size: s.config.MaxSize,
 		MaxSize: s.config.MaxSize,
 		Keys: s.cache.Len(),
 		Utilization: float64(s.cache.Len()) / float64(s.config.MaxSize),
-		Hits: s.stats.hits,
-		Misses: s.stats.misses,
+		Hits: hits,
+		Misses: misses,
 	}
 }
 
@@ -204,8 +199,16 @@ func (s *cacheService) GetCachePolicy(statusCode int, header http.Header, bodySi
 func (s *cacheService) GenerateKey(method, url string, query map[string]string) string {
 	key := fmt.Sprintf("%s:%s", method, url)
 
-	for k, v := range query {
-		key += fmt.Sprintf("?%s=%s", k, v)
+	keys := make([]string, 0, len(query))
+
+	for k := range query {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		key += fmt.Sprintf(":%s=%s", k, query[k])
 	}
 
 	hash := md5.Sum([]byte(key))
@@ -213,5 +216,5 @@ func (s *cacheService) GenerateKey(method, url string, query map[string]string) 
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[:len(substr)] == substr
+	return strings.Contains(s, substr)
 }
