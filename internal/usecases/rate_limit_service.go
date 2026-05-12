@@ -63,7 +63,6 @@ func (s *rateLimitService) CheckRequest(ctx context.Context, ip string, bodySize
 	var reason string
 
 	err := s.store.Update(ctx, key, func(state *domain.RateLimitState) error {
-		// state гарантированно != nil
 		if state.Key == "" {
 			initState(state, key, s.config)
 		}
@@ -138,7 +137,6 @@ func (s *rateLimitService) RemoveConnection(ctx context.Context, ip string) erro
 	key := s.getKey(ip)
 
 	return s.store.Update(ctx, key, func(state *domain.RateLimitState) error {
-		// безопасно даже если state новый
 		limiter := NewRateLimiter(state, s.config)
 		limiter.CloseConnection()
 		return nil

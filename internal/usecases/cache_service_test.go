@@ -5,20 +5,13 @@ import (
 	"net/http"
 	"proxy/internal/domain"
 	"proxy/internal/pkg/cache"
+	"proxy/internal/testutils"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockLogger struct{}
-
-func (l *mockLogger) Debugf(format string, args ...any) {}
-func (l *mockLogger) Infof(format string, args ...any)  {}
-func (l *mockLogger) Warnf(format string, args ...any)  {}
-func (l *mockLogger) Errorf(format string, args ...any) {}
-func (l *mockLogger) Fatalf(format string, args ...any) {}
 
 func TestCacheService_Get_Hit(t *testing.T) {
 	storage := domain.NewMapStorage()
@@ -33,7 +26,7 @@ func TestCacheService_Get_Hit(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
 		Key: "test-key",
@@ -65,7 +58,7 @@ func TestCacheService_Get_Miss(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	cached, err := cacheService.Get(context.Background(), "non-existent-key")
 	require.NoError(t, err)
@@ -85,7 +78,7 @@ func TestCacheService_Get_Expired(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 	entry := &domain.CacheEntry{
 		Key: "test-key",
 		Value: []byte("test-value"),
@@ -114,7 +107,7 @@ func TestCacheService_Get_InvalidType(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 	cache.Set("test-key", "invalid-type")
 	cached, err := cacheService.Get(context.Background(), "test-key")
 	require.NoError(t, err)
@@ -134,7 +127,7 @@ func TestCacheService_GetCachePolicy_2xx(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	policyFunc := cacheService.GetCachePolicy(200, http.Header{}, 100)
 	assert.True(t, policyFunc.Cacheable)
@@ -154,7 +147,7 @@ func TestCacheService_GetCachePolicy_3xx(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	policyFunc := cacheService.GetCachePolicy(304, http.Header{}, 100)
 	assert.True(t, policyFunc.Cacheable)
@@ -174,7 +167,7 @@ func TestCacheService_GetCachePolicy_4xx(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	policyFunc := cacheService.GetCachePolicy(404, http.Header{}, 100)
 	assert.True(t, policyFunc.Cacheable)
@@ -194,7 +187,7 @@ func TestCacheService_GetCachePolicy_5xx(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	policyFunc := cacheService.GetCachePolicy(500, http.Header{}, 100)
 	assert.True(t, policyFunc.Cacheable)
@@ -214,7 +207,7 @@ func TestCacheService_GenerateKey(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
 		Key: "test-key",
@@ -250,7 +243,7 @@ func TestCacheService_Disabled(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
 		Key: "test-key",
@@ -280,7 +273,7 @@ func TestCacheService_SizeLimits(t *testing.T) {
 		MaxBodySize: 15,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
 		Key: "test-key",
@@ -309,7 +302,7 @@ func TestCacheService_GetStats(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
 		Key: "test-key",
@@ -343,7 +336,7 @@ func TestCacheService_Clear(t *testing.T) {
 		MaxBodySize: 1000,
 	}
 
-	cacheService := NewCacheService(cache, config, &mockLogger{})
+	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
 		Key: "test-key",
