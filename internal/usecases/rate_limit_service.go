@@ -30,19 +30,21 @@ type RateLimitService interface {
 }
 
 type rateLimitService struct {
-	mu             sync.Mutex
-	store          RateLimitStore
-	config         domain.RateLimitConfig
-	logger         logger.Logger
-	violations     []domain.RateLimitViolation
-	maxInactivity  time.Duration
+	mu            sync.Mutex
+	store         RateLimitStore
+	config        domain.RateLimitConfig
+	logger        logger.Logger
+	monitoring    domain.MonitoringCollector
+	violations    []domain.RateLimitViolation
+	maxInactivity time.Duration
 }
 
-func NewRateLimitService(store RateLimitStore, config domain.RateLimitConfig, logger logger.Logger) RateLimitService {
+func NewRateLimitService(store RateLimitStore, config domain.RateLimitConfig, logger logger.Logger, monitoring domain.MonitoringCollector) RateLimitService {
 	s := &rateLimitService{
 		store:         store,
 		config:        config,
 		logger:        logger,
+		monitoring:    monitoring,
 		violations:    make([]domain.RateLimitViolation, 0),
 		maxInactivity: time.Hour,
 	}
@@ -51,7 +53,6 @@ func NewRateLimitService(store RateLimitStore, config domain.RateLimitConfig, lo
 
 	return s
 }
-
 func (s *rateLimitService) CheckRequest(ctx context.Context, ip string, bodySize int64) (bool, string, error) {
 	if !s.config.Enabled {
 		return true, "", nil
@@ -298,14 +299,24 @@ func initState(state *domain.RateLimitState, key string, config domain.RateLimit
 }
 
 func (s *rateLimitService) recordViolation(key, reason string) {
+	now := time.Now()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.violations = append(s.violations, domain.RateLimitViolation{
 		Key:       key,
-		Timestamp: time.Now(),
+		Timestamp: now,
 		Reason:    reason,
 	})
+
+	if s.monitoring != nil {
+		s.monitoring.RecordRateLimitViolation(domain.RateLimitMetric{
+			Key:       key,
+			Reason:    reason,
+			Timestamp: now,
+		})
+	}
 }
 
 func (s *rateLimitService) cleanupViolations() {

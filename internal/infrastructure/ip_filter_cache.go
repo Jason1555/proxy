@@ -7,20 +7,20 @@ import (
 )
 
 type SimpleIPFilterCache struct {
-	mu sync.RWMutex
+	mu    sync.RWMutex
 	cache map[string]*cacheEntry
-	ttl time.Duration
+	ttl   time.Duration
 }
 
 type cacheEntry struct {
-	result *domain.IPCheckResult
+	result    *domain.IPCheckResult
 	expiresAt time.Time
 }
 
 func NewSimpleIPFilterCache(ttl time.Duration) domain.IPFilterCache {
 	cache := &SimpleIPFilterCache{
-		cache: make(map[string]*cacheEntry), 
-		ttl: ttl,
+		cache: make(map[string]*cacheEntry),
+		ttl:   ttl,
 	}
 
 	go cache.cleanupRoutine()
@@ -50,7 +50,7 @@ func (c *SimpleIPFilterCache) Set(ip string, result *domain.IPCheckResult) {
 	defer c.mu.Unlock()
 
 	c.cache[ip] = &cacheEntry{
-		result: result,
+		result:    result,
 		expiresAt: time.Now().Add(c.ttl),
 	}
 }
@@ -68,7 +68,7 @@ func (c *SimpleIPFilterCache) GetStats() map[string]any {
 
 	return map[string]any{
 		"size": len(c.cache),
-		"ttl": c.ttl.String(),
+		"ttl":  c.ttl.String(),
 	}
 }
 

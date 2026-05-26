@@ -10,7 +10,6 @@ import (
 
 	"proxy/internal/domain"
 	"proxy/internal/infrastructure/logger"
-	"proxy/internal/repository"
 )
 
 type IPFilterService interface {
@@ -29,15 +28,16 @@ type IPFilterService interface {
 
 // ipFilterService основной сервис IP фильтра
 type ipFilterService struct {
-	repo            repository.IPAccessRepository
-	cache           domain.IPFilterCache
-	parser          domain.IPParser
-	matcher         domain.IPMatcher
-	logger          logger.Logger
-	config          domain.IPFilterConfig
-	policy          *domain.IPAccessPolicy
-	policyMu        sync.RWMutex
-	stats           *ipFilterStats
+	repo       domain.IPAccessRepository
+	cache      domain.IPFilterCache
+	parser     domain.IPParser
+	matcher    domain.IPMatcher
+	logger     logger.Logger
+	config     domain.IPFilterConfig
+	monitoring domain.MonitoringCollector
+	policy     *domain.IPAccessPolicy
+	policyMu   sync.RWMutex
+	stats      *ipFilterStats
 }
 
 type ipFilterStats struct {
@@ -49,15 +49,16 @@ type ipFilterStats struct {
 	cacheMisses      int64
 }
 
-func NewipFilterService(repo repository.IPAccessRepository,	cache domain.IPFilterCache, parser domain.IPParser, matcher domain.IPMatcher, logger logger.Logger, config domain.IPFilterConfig,) *ipFilterService {
+func NewipFilterService(repo domain.IPAccessRepository, cache domain.IPFilterCache, parser domain.IPParser, matcher domain.IPMatcher, logger logger.Logger, config domain.IPFilterConfig, monitoring domain.MonitoringCollector) *ipFilterService {
 	return &ipFilterService{
-		repo:    repo,
-		cache:   cache,
-		parser:  parser,
-		matcher: matcher,
-		logger:  logger,
-		config:  config,
-		stats:   &ipFilterStats{},
+		repo:       repo,
+		cache:      cache,
+		parser:     parser,
+		matcher:    matcher,
+		logger:     logger,
+		config:     config,
+		monitoring: monitoring,
+		stats:      &ipFilterStats{},
 	}
 }
 
@@ -118,6 +119,16 @@ func (s *ipFilterService) CheckIP(ctx context.Context, ip string) (*domain.IPChe
 		atomic.AddInt64(&s.stats.greyListRequests, 1)
 	}
 
+	if s.monitoring != nil {
+		s.monitoring.RecordIPAccess(domain.IPAccessMetric{
+			IP:        ip,
+			Allowed:   result.IsAllowed,
+			ListType:  result.ListType,
+			Reason:    result.Reason,
+			Timestamp: result.CheckedAt,
+		})
+	}
+
 	if s.config.EnableLogging {
 		s.logger.Infof("IP check: %s, allowed: %v, reason: %s", ip, result.IsAllowed, result.Reason)
 	}
@@ -128,7 +139,7 @@ func (s *ipFilterService) CheckIP(ctx context.Context, ip string) (*domain.IPChe
 // CheckIPBatch проверяет несколько IP адресов
 func (s *ipFilterService) CheckIPBatch(ctx context.Context, ips []string) ([]domain.IPCheckResult, error) {
 	results := make([]domain.IPCheckResult, 0, len(ips))
-	
+
 	for _, ip := range ips {
 		result, err := s.CheckIP(ctx, ip)
 		if err != nil {

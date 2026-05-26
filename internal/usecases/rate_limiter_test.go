@@ -23,4 +23,3 @@ func TestRateLimiter_InitializesTime(t *testing.T) {
 	assert.False(t, state.CreatedAt.IsZero())
 	assert.False(t, state.LastRefillAt.IsZero())
 }
-

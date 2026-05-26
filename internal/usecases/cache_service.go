@@ -25,10 +25,10 @@ type CacheService interface {
 	GenerateKey(method, url string, query map[string]string) string
 }
 type cacheService struct {
-	cache *cache.Cache
+	cache  *cache.Cache
 	config domain.CacheConfig
 	logger logger.Logger
-	stats *cacheStats
+	stats  *cacheStats
 }
 
 type cacheStats struct {
@@ -41,7 +41,7 @@ func NewCacheService(cache *cache.Cache, config domain.CacheConfig, logger logge
 		cache:  cache,
 		config: config,
 		logger: logger,
-		stats: &cacheStats{},
+		stats:  &cacheStats{},
 	}
 }
 
@@ -130,12 +130,12 @@ func (s *cacheService) GetStats(ctx context.Context) domain.CacheStats {
 	misses := atomic.LoadInt64(&s.stats.misses)
 
 	return domain.CacheStats{
-		Size: s.config.MaxSize,
-		MaxSize: s.config.MaxSize,
-		Keys: s.cache.Len(),
+		Size:        s.config.MaxSize,
+		MaxSize:     s.config.MaxSize,
+		Keys:        s.cache.Len(),
 		Utilization: float64(s.cache.Len()) / float64(s.config.MaxSize),
-		Hits: hits,
-		Misses: misses,
+		Hits:        hits,
+		Misses:      misses,
 	}
 }
 
@@ -148,7 +148,7 @@ func (s *cacheService) Clear(ctx context.Context) error {
 func (s *cacheService) GetCachePolicy(statusCode int, header http.Header, bodySize int64) domain.ResponseCachePolicy {
 	policy := domain.ResponseCachePolicy{
 		Cacheable: false,
-		Reason: "Not cacheable by default",
+		Reason:    "Not cacheable by default",
 	}
 
 	cacheControl := header.Get("Cache-Control")
@@ -183,11 +183,11 @@ func (s *cacheService) GetCachePolicy(statusCode int, header http.Header, bodySi
 		policy.TTL = s.config.TTL5xx
 		policy.Reason = "5xx responses are cacheable by default"
 		policy.Tags = []string{"5xx", "server-error"}
-		
+
 	default:
 		policy.Reason = fmt.Sprintf("Status code %d is not cacheable by default", statusCode)
 	}
-	
+
 	if bodySize < s.config.MinBodySize || bodySize > s.config.MaxBodySize {
 		policy.Cacheable = false
 		policy.Reason = fmt.Sprintf("Response body size %d is outside of %d and %d bounds", bodySize, s.config.MinBodySize, s.config.MaxBodySize)

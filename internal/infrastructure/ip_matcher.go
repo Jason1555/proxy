@@ -10,7 +10,7 @@ type Matcher struct {
 }
 
 func NewMatcher(parser domain.IPParser) domain.IPMatcher {
-	return &Matcher {
+	return &Matcher{
 		parser: parser,
 	}
 }
@@ -25,8 +25,8 @@ func (m *Matcher) Match(ip net.IP, entries []domain.IPEntry) (bool, *domain.IPEn
 
 		if m.parser.IsValidCIDR(entry.Value) {
 			if ipNet, err := m.parser.ParseCIDR(entry.Value); err == nil {
-				if m.MatchCIDR(ip, ipNet) { 
-					return true, entry 
+				if m.MatchCIDR(ip, ipNet) {
+					return true, entry
 				}
 			}
 		}

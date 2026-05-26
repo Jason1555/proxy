@@ -14,16 +14,16 @@ type InMemoryIPAccessRepository struct {
 }
 
 func NewInMemoryIPAccessRepository() *InMemoryIPAccessRepository {
-	return &InMemoryIPAccessRepository {
-		policy: &domain.IPAccessPolicy {
-			ID: "default",
+	return &InMemoryIPAccessRepository{
+		policy: &domain.IPAccessPolicy{
+			ID:            "default",
 			DefaultPolicy: "allow",
-			AllowList: make([]domain.IPEntry, 0),
-			DenyList: make([]domain.IPEntry, 0),
-			GreyList: make([]domain.IPEntry, 0),
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			Version: 1,
+			AllowList:     make([]domain.IPEntry, 0),
+			DenyList:      make([]domain.IPEntry, 0),
+			GreyList:      make([]domain.IPEntry, 0),
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			Version:       1,
 		},
 	}
 }
@@ -31,34 +31,34 @@ func NewInMemoryIPAccessRepository() *InMemoryIPAccessRepository {
 func (r *InMemoryIPAccessRepository) GetPolicy(ctx context.Context) (*domain.IPAccessPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	if r.policy == nil {
 		return nil, fmt.Errorf("policy not found")
 	}
-	
+
 	return r.policy, nil
 }
 
 func (r *InMemoryIPAccessRepository) SavePolicy(ctx context.Context, policy *domain.IPAccessPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if policy == nil {
 		return fmt.Errorf("policy cannot be nil")
 	}
-	
+
 	policy.UpdatedAt = time.Now()
 	policy.Version++
-	
+
 	r.policy = policy
-	
+
 	return nil
 }
 
 func (r *InMemoryIPAccessRepository) AddEntry(ctx context.Context, entry domain.IPEntry) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	switch entry.Type {
 	case domain.AllowList:
 		r.policy.AllowList = append(r.policy.AllowList, entry)
@@ -70,16 +70,16 @@ func (r *InMemoryIPAccessRepository) AddEntry(ctx context.Context, entry domain.
 
 	r.policy.UpdatedAt = time.Now()
 	r.policy.Version++
-	
+
 	return nil
 }
 
 func (r *InMemoryIPAccessRepository) RemoveEntry(ctx context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
-	found := false 
-	
+
+	found := false
+
 	for i, entry := range r.policy.AllowList {
 		if entry.ID == id {
 			r.policy.AllowList = append(r.policy.AllowList[:i], r.policy.AllowList[i+1:]...)
@@ -87,7 +87,7 @@ func (r *InMemoryIPAccessRepository) RemoveEntry(ctx context.Context, id string)
 			break
 		}
 	}
-	
+
 	if !found {
 		for i, entry := range r.policy.GreyList {
 			if entry.ID == id {
@@ -97,47 +97,47 @@ func (r *InMemoryIPAccessRepository) RemoveEntry(ctx context.Context, id string)
 			}
 		}
 	}
-	
+
 	if !found {
 		return fmt.Errorf("entry not found: %s", id)
 	}
 
 	r.policy.UpdatedAt = time.Now()
 	r.policy.Version++
-	
+
 	return nil
 }
 
 func (r *InMemoryIPAccessRepository) GetEntry(ctx context.Context, id string) (*domain.IPEntry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	for i := range r.policy.AllowList {
 		if r.policy.AllowList[i].ID == id {
 			return &r.policy.AllowList[i], nil
 		}
 	}
-	
+
 	for i := range r.policy.DenyList {
 		if r.policy.DenyList[i].ID == id {
 			return &r.policy.DenyList[i], nil
 		}
 	}
-	
+
 	for i := range r.policy.GreyList {
 		if r.policy.GreyList[i].ID == id {
 			return &r.policy.GreyList[i], nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("entry not found: %s", id)
 }
 
 func (r *InMemoryIPAccessRepository) GetAllEntries(ctx context.Context, listType domain.IPListType) ([]domain.IPEntry, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
-	switch listType{
+
+	switch listType {
 	case domain.AllowList:
 		return r.policy.AllowList, nil
 	case domain.DenyList:
@@ -152,7 +152,7 @@ func (r *InMemoryIPAccessRepository) GetAllEntries(ctx context.Context, listType
 func (r *InMemoryIPAccessRepository) ClearList(ctx context.Context, listType domain.IPListType) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	switch listType {
 	case domain.AllowList:
 		r.policy.AllowList = make([]domain.IPEntry, 0)
@@ -166,6 +166,6 @@ func (r *InMemoryIPAccessRepository) ClearList(ctx context.Context, listType dom
 
 	r.policy.UpdatedAt = time.Now()
 	r.policy.Version++
-	
+
 	return nil
 }

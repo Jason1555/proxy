@@ -10,7 +10,7 @@ import (
 // MockMapStorage
 
 type mockStorage struct {
-	mu sync.RWMutex
+	mu   sync.RWMutex
 	data map[string]any
 }
 
@@ -56,8 +56,8 @@ func (s *mockStorage) Clear() {
 type mockPolicy struct {
 	victim string
 
-	onGetCalled []string
-	onSetCalled []string
+	onGetCalled    []string
+	onSetCalled    []string
 	onDeleteCalled []string
 }
 

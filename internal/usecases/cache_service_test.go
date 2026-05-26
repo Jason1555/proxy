@@ -18,10 +18,10 @@ func TestCacheService_Get_Hit(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -29,11 +29,11 @@ func TestCacheService_Get_Hit(t *testing.T) {
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test-value"),
+		Key:        "test-key",
+		Value:      []byte("test-value"),
 		StatusCode: 200,
-		ExpiresAt: time.Now().Add(time.Hour),
-		Size: 10,
+		ExpiresAt:  time.Now().Add(time.Hour),
+		Size:       10,
 	}
 
 	err := cacheService.Set(context.Background(), entry)
@@ -50,10 +50,10 @@ func TestCacheService_Get_Miss(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -70,21 +70,21 @@ func TestCacheService_Get_Expired(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
 
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test-value"),
+		Key:        "test-key",
+		Value:      []byte("test-value"),
 		StatusCode: 200,
-		ExpiresAt: time.Now().Add(-time.Minute),
-		Size: 10,
+		ExpiresAt:  time.Now().Add(-time.Minute),
+		Size:       10,
 	}
 
 	err := cacheService.Set(context.Background(), entry)
@@ -99,10 +99,10 @@ func TestCacheService_Get_InvalidType(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -119,10 +119,10 @@ func TestCacheService_GetCachePolicy_2xx(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		TTL2xx: time.Minute * 5,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		TTL2xx:      time.Minute * 5,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -139,10 +139,10 @@ func TestCacheService_GetCachePolicy_3xx(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		TTL3xx: time.Minute * 5,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		TTL3xx:      time.Minute * 5,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -159,10 +159,10 @@ func TestCacheService_GetCachePolicy_4xx(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		TTL4xx: time.Minute * 5,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		TTL4xx:      time.Minute * 5,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -179,10 +179,10 @@ func TestCacheService_GetCachePolicy_5xx(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		TTL5xx: time.Minute * 5,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		TTL5xx:      time.Minute * 5,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -199,10 +199,10 @@ func TestCacheService_GenerateKey(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -210,16 +210,16 @@ func TestCacheService_GenerateKey(t *testing.T) {
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test-value"),
+		Key:       "test-key",
+		Value:     []byte("test-value"),
 		ExpiresAt: time.Now().Add(time.Hour),
-		Size: 10,
+		Size:      10,
 	}
 
 	cacheService.Set(context.Background(), entry)
 
 	req := domain.InvalidationRequest{
-		Type: domain.InvalidateByKey,
+		Type:  domain.InvalidateByKey,
 		Value: "test-key",
 	}
 	err := cacheService.Invalidate(context.Background(), req)
@@ -235,10 +235,10 @@ func TestCacheService_Disabled(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: false,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     false,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -246,10 +246,10 @@ func TestCacheService_Disabled(t *testing.T) {
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test-value"),
+		Key:       "test-key",
+		Value:     []byte("test-value"),
 		ExpiresAt: time.Now().Add(time.Hour),
-		Size: 10,
+		Size:      10,
 	}
 
 	err := cacheService.Set(context.Background(), entry)
@@ -265,10 +265,10 @@ func TestCacheService_SizeLimits(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 5,
 		MaxBodySize: 15,
 	}
@@ -276,10 +276,10 @@ func TestCacheService_SizeLimits(t *testing.T) {
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test"),
+		Key:       "test-key",
+		Value:     []byte("test"),
 		ExpiresAt: time.Now().Add(time.Hour),
-		Size: 4,
+		Size:      4,
 	}
 
 	err := cacheService.Set(context.Background(), entry)
@@ -294,10 +294,10 @@ func TestCacheService_GetStats(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -305,10 +305,10 @@ func TestCacheService_GetStats(t *testing.T) {
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test-value"),
+		Key:       "test-key",
+		Value:     []byte("test-value"),
 		ExpiresAt: time.Now().Add(time.Hour),
-		Size: 10,
+		Size:      10,
 	}
 
 	err := cacheService.Set(context.Background(), entry)
@@ -328,10 +328,10 @@ func TestCacheService_Clear(t *testing.T) {
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
-	config := domain.CacheConfig {
-		MaxSize: 1000,
-		DefaultTTL: time.Hour,
-		Enabled: true,
+	config := domain.CacheConfig{
+		MaxSize:     1000,
+		DefaultTTL:  time.Hour,
+		Enabled:     true,
 		MinBodySize: 1,
 		MaxBodySize: 1000,
 	}
@@ -339,14 +339,14 @@ func TestCacheService_Clear(t *testing.T) {
 	cacheService := NewCacheService(cache, config, &testutils.MockLogger{})
 
 	entry := &domain.CacheEntry{
-		Key: "test-key",
-		Value: []byte("test-value"),
+		Key:       "test-key",
+		Value:     []byte("test-value"),
 		ExpiresAt: time.Now().Add(time.Hour),
-		Size: 10,
+		Size:      10,
 	}
 	err := cacheService.Set(context.Background(), entry)
 	require.NoError(t, err)
-	
+
 	err = cacheService.Clear(context.Background())
 	require.NoError(t, err)
 	cached, err := cacheService.Get(context.Background(), "test-key")

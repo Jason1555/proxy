@@ -28,8 +28,8 @@ type RateLimitState struct {
 	RPHTokens float64
 	RPDTokens float64
 
-	DownloadTokens float64
-	UploadTokens   float64
+	DownloadTokens   float64
+	UploadTokens     float64
 	TotalBytesTokens float64
 
 	NewConnectionsTokens float64
@@ -53,8 +53,8 @@ type RateLimitStatus struct {
 	RPHRemaining int64
 	RPDRemaining int64
 
-	DownloadRemaining int64
-	UploadRemaining   int64
+	DownloadRemaining   int64
+	UploadRemaining     int64
 	TotalBytesRemaining int64
 
 	NewConnectionsRemaining int64
@@ -78,10 +78,10 @@ type RateLimitViolation struct {
 }
 
 type RateLimitMetrics struct {
-	TotalRequests      int64
-	LimitedRequests    int64
-	BandwidthLimited   int64
-	ConnectionLimited  int64
+	TotalRequests     int64
+	LimitedRequests   int64
+	BandwidthLimited  int64
+	ConnectionLimited int64
 
 	UniqueClients int64
 

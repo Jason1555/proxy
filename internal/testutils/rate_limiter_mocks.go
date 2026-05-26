@@ -7,7 +7,7 @@ import (
 )
 
 type MockRateLimitStore struct {
-	mu sync.Mutex
+	mu    sync.Mutex
 	store map[string]*domain.RateLimitState
 }
 
@@ -17,7 +17,7 @@ func NewRateLimitStore() *MockRateLimitStore {
 	}
 }
 
-func (m *MockRateLimitStore) Update (ctx context.Context, key string, fn func(*domain.RateLimitState) error) error {
+func (m *MockRateLimitStore) Update(ctx context.Context, key string, fn func(*domain.RateLimitState) error) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
