@@ -2,7 +2,11 @@ module proxy
 
 go 1.25.9
 
-require go.uber.org/zap v1.27.1
+require (
+	github.com/pelletier/go-toml/v2 v2.2.4
+	go.uber.org/zap v1.27.1
+	gopkg.in/yaml.v3 v3.0.1
+)
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
@@ -25,7 +29,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
@@ -39,7 +42,6 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (

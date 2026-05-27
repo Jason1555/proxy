@@ -1,0 +1,75 @@
+app:
+  name: ProxyApp
+  version: "0.1"
+  reload_timer_seconds: 5
+
+log:
+  level: INFO
+
+server:
+  address: ":8080"
+  read_timeout: 5s
+  write_timeout: 30s
+  idle_timeout: 1m
+
+proxy:
+  base_url: http://127.0.0.1:8081
+  default_allow: false
+  allow_file: configs/allow.json
+  deny_file: configs/deny.json
+
+ip_access:
+  enabled: true
+  default_policy: deny
+  cache_ttl: 5m
+  enable_logging: true
+  enable_metrics: true
+  max_list_size: 10000
+  enable_grey_list: true
+  grey_list_threshold: 3
+  allow_list:
+    - id: office
+      value: 192.168.1.0/24
+      comment: Office network
+    - id: vpn
+      value: 10.0.0.0/8
+      comment: VPN network
+  deny_list:
+    - id: blocked-host
+      value: 203.0.113.10
+      comment: Blocked client
+  grey_list:
+    - id: captcha-subnet
+      value: 198.51.100.0/24
+      comment: Requires CAPTCHA challenge
+
+rate_limit:
+  enabled: true
+  rps: 50
+  rpm: 1000
+  rph: 20000
+  rpd: 200000
+  download_bytes_per_second: 1048576
+  upload_bytes_per_second: 262144
+  total_bytes_per_day: 1073741824
+  max_concurrent_connections: 100
+  new_connections_per_second: 20
+  subnet_mask: /24
+
+cache:
+  enabled: true
+  max_size: 104857600
+  default_ttl: 5m
+  ttl_2xx: 5m
+  ttl_3xx: 1m
+  ttl_4xx: 30s
+  ttl_5xx: 10s
+  min_body_size: 1
+  max_body_size: 10485760
+
+monitoring:
+  request_window: 1m
+  max_latency_samples: 1024
+  max_path_stats: 100
+  track_path_stats: true
+  enable_request_logging: false
