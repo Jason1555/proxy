@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"proxy/internal/domain"
-	"proxy/internal/infrastructure/logger"
 	"sort"
 	"sync"
 	"time"
+
+	"proxy/internal/domain"
+	"proxy/internal/infrastructure/logger"
 )
 
 type RateLimitStore interface {
@@ -19,50 +20,59 @@ type RateLimitStore interface {
 }
 
 type RateLimitService interface {
-	CheckRequest(ctx context.Context, ip string, bodySize int64) (bool, string, error)
-	RecordDownload(ctx context.Context, ip string, bytes int64) error
+	EvaluateRequest(ctx context.Context, ip string, bodySize int64) (Decision, error)
+
 	AddConnection(ctx context.Context, ip string) (bool, error)
 	RemoveConnection(ctx context.Context, ip string) error
+
 	GetStatus(ctx context.Context, ip string) (*domain.RateLimitStatus, error)
 	GetMetrics(ctx context.Context) domain.RateLimitMetrics
+
 	ResetIP(ctx context.Context, ip string) error
 	GetTopViolators(ctx context.Context, limit int) []domain.RateLimitViolator
 }
 
 type rateLimitService struct {
-	mu            sync.Mutex
-	store         RateLimitStore
-	config        domain.RateLimitConfig
-	logger        logger.Logger
-	monitoring    domain.MonitoringCollector
-	violations    []domain.RateLimitViolation
-	maxInactivity time.Duration
+	store      RateLimitStore
+	config     domain.RateLimitConfig
+	logger     logger.Logger
+	monitoring domain.MonitoringCollector
+
+	mu         sync.Mutex
+	violations []domain.RateLimitViolation
 }
 
-func NewRateLimitService(store RateLimitStore, config domain.RateLimitConfig, logger logger.Logger, monitoring domain.MonitoringCollector) RateLimitService {
+func NewRateLimitService(
+	store RateLimitStore,
+	config domain.RateLimitConfig,
+	logger logger.Logger,
+	monitoring domain.MonitoringCollector,
+) RateLimitService {
 	s := &rateLimitService{
-		store:         store,
-		config:        config,
-		logger:        logger,
-		monitoring:    monitoring,
-		violations:    make([]domain.RateLimitViolation, 0),
-		maxInactivity: time.Hour,
+		store:      store,
+		config:     config,
+		logger:     logger,
+		monitoring: monitoring,
+		violations: make([]domain.RateLimitViolation, 0),
 	}
 
 	go s.cleanupViolations()
-
 	return s
 }
 
-func (s *rateLimitService) CheckRequest(ctx context.Context, ip string, bodySize int64) (bool, string, error) {
+func (s *rateLimitService) EvaluateRequest(
+	ctx context.Context,
+	ip string,
+	bodySize int64,
+) (Decision, error) {
+
 	if !s.config.Enabled {
-		return true, "", nil
+		return Decision{Allowed: true}, nil
 	}
 
 	key := s.getKey(ip)
 
-	var allowed bool
-	var reason string
+	var decision Decision
 
 	err := s.store.Update(ctx, key, func(state *domain.RateLimitState) error {
 		if state.Key == "" {
@@ -70,44 +80,24 @@ func (s *rateLimitService) CheckRequest(ctx context.Context, ip string, bodySize
 		}
 
 		limiter := NewRateLimiter(state, s.config)
+		decision = limiter.Evaluate(bodySize)
 
-		allowed, reason = limiter.AllowRequest(bodySize)
-
-		if !allowed {
-			s.recordViolation(key, reason)
+		if !decision.Allowed {
+			s.recordViolation(key, decision.FailedOn, decision.Reason)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		return false, "", err
+		return Decision{}, err
 	}
 
-	if !allowed {
-		s.logger.Warnf("Rate limit exceeded for %s: %s", key, reason)
+	if !decision.Allowed {
+		s.logger.Warnf("rate limit exceeded for %s: %s", key, decision.Reason)
 	}
 
-	return allowed, reason, nil
-}
-
-func (s *rateLimitService) RecordDownload(ctx context.Context, ip string, bytes int64) error {
-	key := s.getKey(ip)
-
-	return s.store.Update(ctx, key, func(state *domain.RateLimitState) error {
-		if state.Key == "" {
-			initState(state, key, s.config)
-		}
-
-		limiter := NewRateLimiter(state, s.config)
-
-		if !limiter.RecordDownload(bytes) {
-			s.recordViolation(key, "download limit exceeded")
-			return fmt.Errorf("download bandwidth limit exceeded")
-		}
-
-		return nil
-	})
+	return decision, nil
 }
 
 func (s *rateLimitService) AddConnection(ctx context.Context, ip string) (bool, error) {
@@ -121,11 +111,10 @@ func (s *rateLimitService) AddConnection(ctx context.Context, ip string) (bool, 
 		}
 
 		limiter := NewRateLimiter(state, s.config)
-
 		allowed = limiter.AllowConnection()
 
 		if !allowed {
-			s.recordViolation(key, "connection limit exceeded")
+			s.recordViolation(key, "CONNECTION", "connection limit exceeded")
 			return fmt.Errorf("connection limit exceeded")
 		}
 
@@ -154,7 +143,7 @@ func (s *rateLimitService) GetStatus(ctx context.Context, ip string) (*domain.Ra
 	}
 
 	if state == nil {
-		return nil, fmt.Errorf("not found")
+		return nil, fmt.Errorf("rate limit state not found")
 	}
 
 	limiter := NewRateLimiter(state, s.config)
@@ -166,9 +155,9 @@ func (s *rateLimitService) GetStatus(ctx context.Context, ip string) (*domain.Ra
 func (s *rateLimitService) GetMetrics(ctx context.Context) domain.RateLimitMetrics {
 	keys, _ := s.store.Keys(ctx)
 
-	metrics := domain.RateLimitMetrics{}
-	totalClients := int64(len(keys))
-	metrics.UniqueClients = totalClients
+	metrics := domain.RateLimitMetrics{
+		UniqueClients: int64(len(keys)),
+	}
 
 	for _, key := range keys {
 		state, _ := s.store.Get(ctx, key)
@@ -184,27 +173,21 @@ func (s *rateLimitService) GetMetrics(ctx context.Context) domain.RateLimitMetri
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	cutoff := time.Now().Add(-time.Hour)
-
-	counts := make(map[string]int64)
-	last := make(map[string]time.Time)
+	counts := map[string]int64{}
+	last := map[string]time.Time{}
 
 	for _, v := range s.violations {
-		if v.Timestamp.After(cutoff) {
-			metrics.ViolationsLastHour++
-		}
-
 		counts[v.Key]++
 		if v.Timestamp.After(last[v.Key]) {
 			last[v.Key] = v.Timestamp
 		}
 	}
 
-	for key, count := range counts {
+	for k, c := range counts {
 		metrics.TopViolators = append(metrics.TopViolators, domain.RateLimitViolator{
-			Key:           key,
-			Violations:    count,
-			LastViolation: last[key],
+			Key:           k,
+			Violations:    c,
+			LastViolation: last[k],
 		})
 	}
 
@@ -212,25 +195,24 @@ func (s *rateLimitService) GetMetrics(ctx context.Context) domain.RateLimitMetri
 		return metrics.TopViolators[i].Violations > metrics.TopViolators[j].Violations
 	})
 
-	if totalClients > 0 {
+	if len(keys) > 0 {
 		metrics.AverageRequestsPerClient =
-			float64(metrics.TotalRequests) / float64(totalClients)
+			float64(metrics.TotalRequests) / float64(len(keys))
 	}
 
 	return metrics
 }
 
 func (s *rateLimitService) ResetIP(ctx context.Context, ip string) error {
-	key := s.getKey(ip)
-	return s.store.Delete(ctx, key)
+	return s.store.Delete(ctx, s.getKey(ip))
 }
 
 func (s *rateLimitService) GetTopViolators(ctx context.Context, limit int) []domain.RateLimitViolator {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	counts := make(map[string]int64)
-	last := make(map[string]time.Time)
+	counts := map[string]int64{}
+	last := map[string]time.Time{}
 
 	for _, v := range s.violations {
 		counts[v.Key]++
@@ -241,11 +223,11 @@ func (s *rateLimitService) GetTopViolators(ctx context.Context, limit int) []dom
 
 	result := make([]domain.RateLimitViolator, 0, len(counts))
 
-	for key, count := range counts {
+	for k, c := range counts {
 		result = append(result, domain.RateLimitViolator{
-			Key:           key,
-			Violations:    count,
-			LastViolation: last[key],
+			Key:           k,
+			Violations:    c,
+			LastViolation: last[k],
 		})
 	}
 
@@ -265,17 +247,12 @@ func (s *rateLimitService) getKey(ip string) string {
 		return ip
 	}
 
-	parsedIP := net.ParseIP(ip)
-	if parsedIP == nil {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
 		return ip
 	}
 
-	_, ipnet, err := net.ParseCIDR(ip + s.config.SubnetMask)
-	if err != nil {
-		return ip
-	}
-
-	return ipnet.String()
+	return ip
 }
 
 func initState(state *domain.RateLimitState, key string, config domain.RateLimitConfig) {
@@ -299,7 +276,7 @@ func initState(state *domain.RateLimitState, key string, config domain.RateLimit
 	state.LastSeenAt = now
 }
 
-func (s *rateLimitService) recordViolation(key, reason string) {
+func (s *rateLimitService) recordViolation(key, limitType, reason string) {
 	now := time.Now()
 
 	s.mu.Lock()
@@ -307,8 +284,9 @@ func (s *rateLimitService) recordViolation(key, reason string) {
 
 	s.violations = append(s.violations, domain.RateLimitViolation{
 		Key:       key,
-		Timestamp: now,
+		LimitType: limitType,
 		Reason:    reason,
+		Timestamp: now,
 	})
 
 	if s.monitoring != nil {

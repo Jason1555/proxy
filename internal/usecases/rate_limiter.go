@@ -2,10 +2,12 @@ package usecases
 
 import (
 	"proxy/internal/domain"
+	"sync"
 	"time"
 )
 
 type RateLimiter struct {
+	mu     sync.Mutex
 	state  *domain.RateLimitState
 	config domain.RateLimitConfig
 }
@@ -27,63 +29,65 @@ func NewRateLimiter(state *domain.RateLimitState, config domain.RateLimitConfig)
 	}
 }
 
-func (rl *RateLimiter) AllowRequest(bodySize int64) (bool, string) {
-	now := time.Now()
+type Decision struct {
+	Allowed    bool
+	Reason     string
+	FailedOn   string
+	RetryAfter time.Duration
+}
 
+func (rl *RateLimiter) Evaluate(bodySize int64) Decision {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	if !rl.config.Enabled {
+		return Decision{Allowed: true}
+	}
+
+	now := time.Now()
 	rl.refillAll(now)
 
 	rl.state.LastSeenAt = now
 	rl.state.TotalRequests++
 
+	// 1. RPS
 	if !consume(&rl.state.RPSTokens, 1) {
-		rl.state.LimitedRequests++
-		return false, "Exceeded requests per second"
+		return rl.reject("RPS limit exceeded", "RPS")
 	}
 
+	// 2. RPM
 	if !consume(&rl.state.RPMTokens, 1) {
-		rl.state.LimitedRequests++
-		return false, "Exceeded requests per minute"
+		return rl.reject("RPM limit exceeded", "RPM")
 	}
 
+	// 3. RPH
 	if !consume(&rl.state.RPHTokens, 1) {
-		rl.state.LimitedRequests++
-		return false, "Exceeded requests per hour"
+		return rl.reject("RPH limit exceeded", "RPH")
 	}
 
+	// 4. RPD
 	if !consume(&rl.state.RPDTokens, 1) {
-		rl.state.LimitedRequests++
-		return false, "Exceeded requests per day"
+		return rl.reject("RPD limit exceeded", "RPD")
 	}
 
+	// 5. upload bandwidth
 	if !consume(&rl.state.UploadTokens, float64(bodySize)) {
-		rl.state.LimitedRequests++
-		return false, "Exceeded upload bandwidth"
+		return rl.reject("upload bandwidth exceeded", "UPLOAD")
 	}
 
+	// 6. total bandwidth
 	if !consume(&rl.state.TotalBytesTokens, float64(bodySize)) {
-		rl.state.LimitedRequests++
-		return false, "Exceeded total daily bandwidth"
+		return rl.reject("total bandwidth exceeded", "TOTAL")
 	}
 
-	return true, ""
-}
-
-func (rl *RateLimiter) RecordDownload(bytes int64) bool {
-	now := time.Now()
-
-	rl.refillAll(now)
-
-	if !consume(&rl.state.DownloadTokens, float64(bytes)) {
-		rl.state.LimitedRequests++
-		return false
-	}
-
-	return true
+	return Decision{Allowed: true}
 }
 
 func (rl *RateLimiter) AllowConnection() bool {
-	now := time.Now()
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
 
+	now := time.Now()
 	rl.refillAll(now)
 
 	if !consume(&rl.state.NewConnectionsTokens, 1) {
@@ -102,12 +106,18 @@ func (rl *RateLimiter) AllowConnection() bool {
 }
 
 func (rl *RateLimiter) CloseConnection() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
 	if rl.state.ActiveConnections > 0 {
 		rl.state.ActiveConnections--
 	}
 }
 
 func (rl *RateLimiter) GetStatus() domain.RateLimitStatus {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
 	return domain.RateLimitStatus{
 		Key: rl.state.Key,
 
@@ -126,9 +136,18 @@ func (rl *RateLimiter) GetStatus() domain.RateLimitStatus {
 	}
 }
 
+func (rl *RateLimiter) reject(reason, failedOn string) Decision {
+	rl.state.LimitedRequests++
+
+	return Decision{
+		Allowed:  false,
+		Reason:   reason,
+		FailedOn: failedOn,
+	}
+}
+
 func (rl *RateLimiter) refillAll(now time.Time) {
 	elapsed := now.Sub(rl.state.LastRefillAt).Seconds()
-
 	if elapsed <= 0 {
 		return
 	}
@@ -137,8 +156,6 @@ func (rl *RateLimiter) refillAll(now time.Time) {
 	refill(&rl.state.RPMTokens, float64(rl.config.RPM), float64(rl.config.RPM)/60, elapsed)
 	refill(&rl.state.RPHTokens, float64(rl.config.RPH), float64(rl.config.RPH)/3600, elapsed)
 	refill(&rl.state.RPDTokens, float64(rl.config.RPD), float64(rl.config.RPD)/86400, elapsed)
-
-	refill(&rl.state.DownloadTokens, float64(rl.config.DownloadBytesPerSecond), float64(rl.config.DownloadBytesPerSecond), elapsed)
 	refill(&rl.state.UploadTokens, float64(rl.config.UploadBytesPerSecond), float64(rl.config.UploadBytesPerSecond), elapsed)
 	refill(&rl.state.TotalBytesTokens, float64(rl.config.TotalBytesPerDay), float64(rl.config.TotalBytesPerDay)/86400, elapsed)
 
