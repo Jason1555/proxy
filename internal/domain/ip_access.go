@@ -35,12 +35,12 @@ type IPAccessPolicy struct {
 }
 
 type IPCheckResult struct {
-	IP          string
-	IsAllowed   bool
-	Reason      string
-	ListType    IPListType
-	MatchedRule string
-	CheckedAt   time.Time
+	IP          string     `json:"ip"`
+	IsAllowed   bool       `json:"is_allowed"`
+	Reason      string     `json:"reason"`
+	ListType    IPListType `json:"list_type"`
+	MatchedRule string     `json:"matched_rule"`
+	CheckedAt   time.Time  `json:"checked_at"`
 }
 
 type IPFilterConfig struct {

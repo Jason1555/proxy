@@ -13,7 +13,7 @@ import (
 )
 
 type IPFilterService interface {
-	CheckIP(ctx context.Context, ip string) (bool, error)
+	CheckIP(ctx context.Context, ip string) (*domain.IPCheckResult, error)
 	ClearCache(ctx context.Context) error
 	CheckIPBatch(ctx context.Context, ips []string) ([]domain.IPCheckResult, error)
 	AddToAllowList(ctx context.Context, pattern string, comment string) (*domain.IPEntry, error)
@@ -24,6 +24,9 @@ type IPFilterService interface {
 	SetPolicy(ctx context.Context, policy *domain.IPAccessPolicy) error
 	ReloadPolicy(ctx context.Context) error
 	GetStats(ctx context.Context) (*domain.IPFilterStats, error)
+	GetAllowList(ctx context.Context) ([]domain.IPEntry, error)
+	GetDenyList(ctx context.Context) ([]domain.IPEntry, error)
+	GetGreyList(ctx context.Context) ([]domain.IPEntry, error)
 }
 
 // ipFilterService основной сервис IP фильтра
@@ -284,6 +287,39 @@ func (s *ipFilterService) GetStats(ctx context.Context) (*domain.IPFilterStats, 
 		GreyListSize:     len(policy.GreyList),
 		LastUpdated:      policy.UpdatedAt,
 	}, nil
+}
+
+func (s *ipFilterService) GetAllowList(
+	ctx context.Context,
+) ([]domain.IPEntry, error) {
+	policy, err := s.getPolicy(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return policy.AllowList, nil
+}
+
+func (s *ipFilterService) GetDenyList(
+	ctx context.Context,
+) ([]domain.IPEntry, error) {
+	policy, err := s.getPolicy(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return policy.DenyList, nil
+}
+
+func (s *ipFilterService) GetGreyList(
+	ctx context.Context,
+) ([]domain.IPEntry, error) {
+	policy, err := s.getPolicy(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return policy.GreyList, nil
 }
 
 // ClearCache очищает кеш

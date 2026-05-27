@@ -53,6 +53,7 @@ func NewRateLimitService(store RateLimitStore, config domain.RateLimitConfig, lo
 
 	return s
 }
+
 func (s *rateLimitService) CheckRequest(ctx context.Context, ip string, bodySize int64) (bool, string, error) {
 	if !s.config.Enabled {
 		return true, "", nil
