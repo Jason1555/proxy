@@ -1,0 +1,9 @@
+basePath: /proxy
+host: localhost:8080
+info:
+  contact: {}
+  description: Reverse proxy service
+  title: Proxy Service API
+  version: "1.0"
+paths: {}
+swagger: "2.0"
