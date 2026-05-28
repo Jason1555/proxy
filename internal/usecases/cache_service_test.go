@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"proxy/internal/domain"
 	"proxy/internal/pkg/cache"
+	"proxy/internal/repository"
 	"proxy/internal/testutils"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestCacheService_Get_Hit(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -46,7 +47,7 @@ func TestCacheService_Get_Hit(t *testing.T) {
 }
 
 func TestCacheService_Get_Miss(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -66,7 +67,7 @@ func TestCacheService_Get_Miss(t *testing.T) {
 }
 
 func TestCacheService_Get_Expired(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -95,7 +96,7 @@ func TestCacheService_Get_Expired(t *testing.T) {
 }
 
 func TestCacheService_Get_InvalidType(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -115,7 +116,7 @@ func TestCacheService_Get_InvalidType(t *testing.T) {
 }
 
 func TestCacheService_GetCachePolicy_2xx(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -135,7 +136,7 @@ func TestCacheService_GetCachePolicy_2xx(t *testing.T) {
 }
 
 func TestCacheService_GetCachePolicy_3xx(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -155,7 +156,7 @@ func TestCacheService_GetCachePolicy_3xx(t *testing.T) {
 }
 
 func TestCacheService_GetCachePolicy_4xx(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -175,7 +176,7 @@ func TestCacheService_GetCachePolicy_4xx(t *testing.T) {
 }
 
 func TestCacheService_GetCachePolicy_5xx(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -195,7 +196,7 @@ func TestCacheService_GetCachePolicy_5xx(t *testing.T) {
 }
 
 func TestCacheService_GenerateKey(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -231,7 +232,7 @@ func TestCacheService_GenerateKey(t *testing.T) {
 }
 
 func TestCacheService_Disabled(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -261,7 +262,7 @@ func TestCacheService_Disabled(t *testing.T) {
 }
 
 func TestCacheService_SizeLimits(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -290,7 +291,7 @@ func TestCacheService_SizeLimits(t *testing.T) {
 }
 
 func TestCacheService_GetStats(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 
@@ -324,7 +325,7 @@ func TestCacheService_GetStats(t *testing.T) {
 }
 
 func TestCacheService_Clear(t *testing.T) {
-	storage := domain.NewMapStorage()
+	storage := repository.NewMapStorage()
 	policy := domain.NewLRUPolicy()
 	cache := cache.NewCache(storage, policy, 1000)
 

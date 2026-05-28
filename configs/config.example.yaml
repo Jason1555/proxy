@@ -11,6 +11,7 @@ server:
   read_timeout: 5s
   write_timeout: 30s
   idle_timeout: 1m
+  admin_ip: "127.0.0.1"
 
 proxy:
   base_url: http://127.0.0.1:8081

@@ -1,4 +1,4 @@
-package domain
+package repository
 
 type MapStorage struct {
 	data map[string]any

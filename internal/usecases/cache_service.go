@@ -24,6 +24,7 @@ type CacheService interface {
 	GetCachePolicy(statusCode int, header http.Header, bodySize int64) domain.ResponseCachePolicy
 	GenerateKey(method, url string, query map[string]string) string
 }
+
 type cacheService struct {
 	cache  *cache.Cache
 	config domain.CacheConfig
