@@ -55,17 +55,23 @@ func (r *InMemoryIPAccessRepository) SavePolicy(ctx context.Context, policy *dom
 	return nil
 }
 
-func (r *InMemoryIPAccessRepository) AddEntry(ctx context.Context, entry domain.IPEntry) error {
+func (r *InMemoryIPAccessRepository) AddEntry(ctx context.Context, entry *domain.IPEntry) error {
+	if entry == nil {
+		return fmt.Errorf("entry cannot be nil")
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	switch entry.Type {
 	case domain.AllowList:
-		r.policy.AllowList = append(r.policy.AllowList, entry)
+		r.policy.AllowList = append(r.policy.AllowList, *entry)
 	case domain.DenyList:
-		r.policy.DenyList = append(r.policy.DenyList, entry)
+		r.policy.DenyList = append(r.policy.DenyList, *entry)
 	case domain.GreyList:
-		r.policy.GreyList = append(r.policy.GreyList, entry)
+		r.policy.GreyList = append(r.policy.GreyList, *entry)
+	default:
+		return fmt.Errorf("invalid list type: %s", entry.Type)
 	}
 
 	r.policy.UpdatedAt = time.Now()

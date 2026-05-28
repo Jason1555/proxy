@@ -2,47 +2,104 @@ package testutils
 
 import (
 	"context"
-	"proxy/internal/domain"
 	"sync"
+
+	"proxy/internal/domain"
 )
 
 type MockRateLimitStore struct {
-	mu    sync.Mutex
-	store map[string]*domain.RateLimitState
+	Mu    sync.Mutex
+	Store map[string]*domain.RateLimitState
+
+	UpdateErr error
+	GetErr    error
+	DeleteErr error
+	KeysErr   error
 }
 
-func NewRateLimitStore() *MockRateLimitStore {
+func NewMockRateLimitStore() *MockRateLimitStore {
 	return &MockRateLimitStore{
-		store: make(map[string]*domain.RateLimitState),
+		Store: make(map[string]*domain.RateLimitState),
 	}
 }
 
-func (m *MockRateLimitStore) Update(ctx context.Context, key string, fn func(*domain.RateLimitState) error) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// backward compatibility for tests
+func NewRateLimitStore() *MockRateLimitStore {
+	return NewMockRateLimitStore()
+}
 
-	state, exists := m.store[key]
+func (m *MockRateLimitStore) Update(
+	ctx context.Context,
+	key string,
+	fn func(*domain.RateLimitState) error,
+) error {
+
+	if m.UpdateErr != nil {
+		return m.UpdateErr
+	}
+
+	m.Mu.Lock()
+	defer m.Mu.Unlock()
+
+	state, exists := m.Store[key]
 	if !exists {
 		state = &domain.RateLimitState{}
-		m.store[key] = state
+		m.Store[key] = state
 	}
+
 	return fn(state)
 }
 
-func (m *MockRateLimitStore) Delete(ctx context.Context, key string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *MockRateLimitStore) Get(
+	ctx context.Context,
+	key string,
+) (*domain.RateLimitState, error) {
 
-	delete(m.store, key)
+	if m.GetErr != nil {
+		return nil, m.GetErr
+	}
+
+	m.Mu.Lock()
+	defer m.Mu.Unlock()
+
+	state, exists := m.Store[key]
+	if !exists {
+		return nil, nil
+	}
+
+	return state, nil
+}
+
+func (m *MockRateLimitStore) Delete(
+	ctx context.Context,
+	key string,
+) error {
+
+	if m.DeleteErr != nil {
+		return m.DeleteErr
+	}
+
+	m.Mu.Lock()
+	defer m.Mu.Unlock()
+
+	delete(m.Store, key)
 	return nil
 }
 
-func (m *MockRateLimitStore) Keys(ctx context.Context) ([]string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *MockRateLimitStore) Keys(
+	ctx context.Context,
+) ([]string, error) {
 
-	keys := make([]string, 0, len(m.store))
-	for k := range m.store {
+	if m.KeysErr != nil {
+		return nil, m.KeysErr
+	}
+
+	m.Mu.Lock()
+	defer m.Mu.Unlock()
+
+	keys := make([]string, 0, len(m.Store))
+
+	for k := range m.Store {
 		keys = append(keys, k)
 	}
 
